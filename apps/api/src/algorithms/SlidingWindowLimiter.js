@@ -10,7 +10,8 @@ export class SlidingWindowLimiter extends IRateLimiter{
         this.redis = getRedisClient();
     }
 
-    async isAllowed(key){
+    async isAllowed(reqOrKey){
+        const key = typeof reqOrKey === 'string' ? reqOrKey : (reqOrKey.apiKey || reqOrKey.ip || 'global');
         const redisKey = `ratelimit:sliding_window:${key}`;
         const now = Date.now();
         const windowStart = now - this.windowMs;
@@ -21,7 +22,8 @@ export class SlidingWindowLimiter extends IRateLimiter{
         let allowed = false;
         if(curCount<this.maxRequests){
             allowed=true;
-            await this.redis.zadd(redisKey,now,`${now}`);
+            const uniqueMember = `${now}-${Math.random().toString(36).substring(2, 9)}`;
+            await this.redis.zadd(redisKey, now, uniqueMember);
         }
 
         await this.redis.expire(redisKey,Math.ceil(this.windowMs/1000));
@@ -29,7 +31,7 @@ export class SlidingWindowLimiter extends IRateLimiter{
 
         return {
             allowed,
-            rem,
+            remaining:rem,
             resetAt:now+this.windowMs
         };
     }

@@ -10,7 +10,8 @@ export class FixedWindowLimiter extends IRateLimiter{
         this.redis = getRedisClient();
     }
 
-    async isAllowed(key){
+    async isAllowed(reqOrKey){
+        const key = typeof reqOrKey === 'string' ? reqOrKey : (reqOrKey.apiKey || reqOrKey.ip || 'global');
         const now = Date.now();
         const windowId = Math.floor(now/this.windowMs);
         const redisKey = `ratelimit:fixed_window:${key}:${windowId}`;
@@ -24,7 +25,7 @@ export class FixedWindowLimiter extends IRateLimiter{
 
         return{
             allowed,
-            rem,
+            remaining:rem,
             resetAt:windowEnd
         };
     }
