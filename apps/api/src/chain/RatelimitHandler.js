@@ -1,14 +1,14 @@
 import { AbstractHandler } from './AbstractHandler.js';
 
 export class RateLimitHandler extends AbstractHandler {
- 
-  constructor(limiter) {
+  constructor(rateLimiterFactory) {
     super();
-    this.limiter = limiter;
+    this.rateLimiterFactory = rateLimiterFactory;
   }
 
   async handle(request) {
-    const result = await this.limiter.isAllowed(request);
+    const limiter = this.rateLimiterFactory.createLimiter(request.clientConfig);
+    const result = await limiter.isAllowed(request);
 
     if (!result.allowed) {
       return {
