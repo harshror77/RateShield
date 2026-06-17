@@ -12,5 +12,5 @@ export const redisConfig = {
     },
 
     connectTimeout: 5000,
-    commandTimeout:2000
+    commandTimeout:2000 
 };
