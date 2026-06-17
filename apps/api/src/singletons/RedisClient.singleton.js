@@ -24,6 +24,6 @@ export async function disconnectRedis(){
     if(instance){
         await instance.quit();
         instance=null;
-        cosole.log('[Redis] disconnected cleanly');
+        console.log('[Redis] disconnected cleanly');
     }
 }
