@@ -1,7 +1,6 @@
 {
-  "name": "@rate-limiter/sdk",
+  "name": "@harshror77/rate-limiter-sdk",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "main": "src/index.js",
   "dependencies": {

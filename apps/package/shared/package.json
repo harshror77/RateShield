@@ -1,7 +1,6 @@
 {
-  "name": "@rate-limiter/shared",
+  "name": "@harshror77/rate-limiter",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "main": "src/index.js"
 }
