@@ -1,10 +1,9 @@
 import {HandlerChainFactory, RateLimiterFactory} from '../factories/index.js';
-import {InMemoryClientRepository} from '../repositories/index.js'
-import {getConfig} from '../singletons/index.js'
+import {PostgresClientRepository} from '../repositories/index.js'
 
 export class RateLimitService{
     constructor(){
-        const clientRepository = new InMemoryClientRepository();
+        const clientRepository = new PostgresClientRepository();
         const rateLimiterFactory = new RateLimiterFactory();
 
         this.chainFactory = new HandlerChainFactory(

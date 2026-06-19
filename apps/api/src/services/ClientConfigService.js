@@ -1,8 +1,8 @@
-import { InMemoryClientRepository } from '../repositories/index.js';
+import { PostgresClientRepository } from '../repositories/index.js';
 
 export class ClientConfigService {
   constructor() {
-    this.repository = new InMemoryClientRepository();
+    this.repository = new PostgresClientRepository();
   }
 
   async getAll() {
