@@ -9,13 +9,15 @@ import healthRoutes from './routes/health.routes.js';
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json());
 app.use(correlationIdMiddleware);
 app.use('/health', healthRoutes);
-app.use(apiKeyAuthMiddleware);
-app.use('/api', routes);
+
+app.use(express.static('/app/apps/dashboard/dist'));
+
+app.use('/api', apiKeyAuthMiddleware ,routes);
 app.use(errorHandlerMiddleware);
 
 export default app;
