@@ -19,4 +19,5 @@ jobs:
             cd ~/RateShield
             git fetch origin
             git reset --hard origin/main
+            docker-compose down -v
             docker-compose up -d --build
