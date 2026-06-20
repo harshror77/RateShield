@@ -8,23 +8,28 @@ export class PlanLimiterDecorator extends BaseLimiterDecorator {
     this.planLimiterCache = new Map();
   }
 
-  getLimiterForPlan(planId) {
-    if (this.planLimiterCache.has(planId)) {
-      return this.planLimiterCache.get(planId);
+  getLimiterFor(request) {
+    const cacheKey = request.customLimits?.plan
+      ? `custom:${request.apiKey}`
+      : `plan:${request.planId || PLANS.FREE}`;
+
+    if (this.planLimiterCache.has(cacheKey)) {
+      return this.planLimiterCache.get(cacheKey);
     }
-    const limits = planLimits[planId] || planLimits[PLANS.FREE];
+
+    const limits = request.customLimits?.plan || planLimits[request.planId] || planLimits[PLANS.FREE];
+
     const limiter = new FixedWindowLimiter({
       maxRequests: limits.maxRequests,
       windowMs: limits.windowMs,
     });
-    this.planLimiterCache.set(planId, limiter);
+    this.planLimiterCache.set(cacheKey, limiter);
     return limiter;
   }
 
   async isAllowed(request, options) {
-    const planId = request.planId || PLANS.FREE;
-    const planLimiter = this.getLimiterForPlan(planId);
-    const planKey = `plan:${planId}:${request.apiKey}`;
+    const planLimiter = this.getLimiterFor(request);
+    const planKey = `plan:${request.planId || 'custom'}:${request.apiKey}`;
     const planResult = await planLimiter.isAllowed(planKey);
 
     if (!planResult.allowed) {
@@ -37,11 +42,11 @@ export class PlanLimiterDecorator extends BaseLimiterDecorator {
     }
 
     const wrappedResult = await this.wrappedLimiter.isAllowed(request, options);
-    if(!wrappedResult.allowed) return wrappedResult;
+    if (!wrappedResult.allowed) return wrappedResult;
     return {
       allowed: true,
       remaining: planResult.remaining,
-      resetAt:  planResult.resetAt
+      resetAt: planResult.resetAt
     };
   }
 }

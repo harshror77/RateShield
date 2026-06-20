@@ -45,6 +45,7 @@ export class AuthKeyHandler extends AbstractHandler {
         request.apiKey = apiKey;
         request.planId = clientConfig.planId;
         request.clientConfig = clientConfig;
+        request.customLimits = clientConfig.customLimits || null;
 
         return super.handle(request);
     }

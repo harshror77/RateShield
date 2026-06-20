@@ -17,14 +17,14 @@ export class PostgresClientRepository extends IClientRepository {
   }
 
   async save(clientConfig) {
-    const { apiKey, clientName, planId, algorithm } = clientConfig
+    const { apiKey, clientName, planId, algorithm, customLimits } = clientConfig
     const result = await this.db.query(
-      `INSERT INTO clients (api_key, client_name, plan_id, algorithm)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO clients (api_key, client_name, plan_id, algorithm, custom_limits)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (api_key) DO UPDATE
-       SET client_name = $2, plan_id = $3, algorithm = $4
+       SET client_name = $2, plan_id = $3, algorithm = $4, custom_limits = $5
        RETURNING *`,
-      [apiKey, clientName, planId, algorithm]
+      [apiKey, clientName, planId, algorithm, customLimits ? JSON.stringify(customLimits) : null]
     )
     return this.#toClient(result.rows[0])
   }
@@ -50,6 +50,7 @@ export class PostgresClientRepository extends IClientRepository {
       clientName: row.client_name,
       planId: row.plan_id,
       algorithm: row.algorithm,
+      customLimits: row.custom_limits || null,
     }
   }
 }
