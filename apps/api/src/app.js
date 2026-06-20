@@ -18,6 +18,9 @@ app.use('/health', healthRoutes);
 app.use(express.static('/app/apps/dashboard/dist'));
 
 app.use('/api', apiKeyAuthMiddleware ,routes);
+app.get('*', (req, res) => {
+    res.sendFile('/app/apps/dashboard/dist/index.html');
+});
 app.use(errorHandlerMiddleware);
 
 export default app;
