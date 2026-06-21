@@ -1,5 +1,6 @@
 import { TokenBucketLimiter, SlidingWindowLimiter, FixedWindowLimiter } from '../algorithms/index.js';
-import { IpLimiterDecorator, UserLimiterDecorator, PlanLimiterDecorator } from '../decorators/index.js';
+import { IpLimiterDecorator, UserLimiterDecorator } from '../decorators/index.js';
+
 import { ALGORITHMS, planLimits, PLANS } from '../config/plans.config.js';
 
 const IP_LIMITS = { capacity: 5, refillRate: 1 };
@@ -34,16 +35,15 @@ export class RateLimiterFactory {
   #buildStack(clientConfig) {
     const innermost = this.#createAlgorithm(clientConfig);
     const withIpCheck = new IpLimiterDecorator(innermost, IP_LIMITS);
-    const withUserCheck = new UserLimiterDecorator(withIpCheck, USER_LIMITS);
-    return new PlanLimiterDecorator(withUserCheck);
+    return new UserLimiterDecorator(withIpCheck, USER_LIMITS);
   }
 
   createLimiter(clientConfig) {
-    const algorithmKey = clientConfig.algorithm || ALGORITHMS.TOKEN_BUCKET;
-    if (this.stackCache.has(algorithmKey)) return this.stackCache.get(algorithmKey);
+    const cacheKey = clientConfig.apiKey; 
+    if (this.stackCache.has(cacheKey)) return this.stackCache.get(cacheKey);
 
     const stack = this.#buildStack(clientConfig);
-    this.stackCache.set(algorithmKey, stack);
+    this.stackCache.set(cacheKey, stack);
     return stack;
   }
 }
