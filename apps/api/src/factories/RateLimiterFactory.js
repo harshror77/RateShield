@@ -1,6 +1,5 @@
 import { TokenBucketLimiter, SlidingWindowLimiter, FixedWindowLimiter } from '../algorithms/index.js';
-import { IpLimiterDecorator, UserLimiterDecorator } from '../decorators/index.js';
-
+import { IpLimiterDecorator, UserLimiterDecorator, PlanLimiterDecorator } from '../decorators/index.js';
 import { ALGORITHMS, planLimits, PLANS } from '../config/plans.config.js';
 
 const IP_LIMITS = { capacity: 5, refillRate: 1 };
@@ -18,7 +17,7 @@ export class RateLimiterFactory {
     const baselineWindow = { maxRequests: limits.maxRequests, windowMs: limits.windowMs };
     const baselineBucket = {
       capacity: limits.maxRequests,
-      refillRate: Math.ceil(limits.maxRequests / (limits.windowMs / 1000))
+      refillRate: Math.max(1, Math.ceil(limits.maxRequests / (limits.windowMs / 1000)))
     };
 
     switch (clientConfig.algorithm) {
@@ -35,11 +34,12 @@ export class RateLimiterFactory {
   #buildStack(clientConfig) {
     const innermost = this.#createAlgorithm(clientConfig);
     const withIpCheck = new IpLimiterDecorator(innermost, IP_LIMITS);
-    return new UserLimiterDecorator(withIpCheck, USER_LIMITS);
+    const withUserCheck = new UserLimiterDecorator(withIpCheck, USER_LIMITS);
+    return new PlanLimiterDecorator(withUserCheck);
   }
 
   createLimiter(clientConfig) {
-    const cacheKey = clientConfig.apiKey; 
+    const cacheKey = clientConfig.apiKey;
     if (this.stackCache.has(cacheKey)) return this.stackCache.get(cacheKey);
 
     const stack = this.#buildStack(clientConfig);
