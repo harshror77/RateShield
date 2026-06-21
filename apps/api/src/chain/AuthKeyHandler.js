@@ -36,10 +36,6 @@ export class AuthKeyHandler extends AbstractHandler {
                     error: 'Failed to auto-register client'
                 };
             }
-        } 
-        else if (clientName && clientConfig.clientName !== clientName) {
-            clientConfig.clientName = clientName;
-            await this.clientRepository.save(clientConfig);
         }
 
         request.apiKey = apiKey;
