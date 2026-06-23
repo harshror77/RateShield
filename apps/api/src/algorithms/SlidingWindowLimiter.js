@@ -1,42 +1,53 @@
-import {IRateLimiter} from './IRateLimiter.js'
-import {getRedisClient} from '../singletons/RedisClient.singleton.js'
+import { IRateLimiter } from './IRateLimiter.js'
+import { getRedisClient } from '../singletons/RedisClient.singleton.js'
 
-export class SlidingWindowLimiter extends IRateLimiter{
-    
-    constructor({maxRequests,windowMs}){
+const SLIDING_WINDOW_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+local maxReq = tonumber(ARGV[3])
+local windowSec = tonumber(ARGV[4])
+local memberId = ARGV[5]
+local windowStart = now - windowMs
+
+redis.call('ZREMRANGEBYSCORE', key, '-inf', windowStart)
+local count = redis.call('ZCARD', key)
+
+if count < maxReq then
+  redis.call('ZADD', key, now, now .. '-' .. memberId)
+  redis.call('EXPIRE', key, windowSec)
+  return { 1, maxReq - count - 1 }
+end
+
+return { 0, 0 }
+`;
+
+export class SlidingWindowLimiter extends IRateLimiter {
+    constructor({ maxRequests, windowMs }) {
         super();
         this.maxRequests = maxRequests;
         this.windowMs = windowMs;
         this.redis = getRedisClient();
     }
 
-    async isAllowed(reqOrKey){
+    async isAllowed(reqOrKey) {
         const key = typeof reqOrKey === 'string' ? reqOrKey : (reqOrKey.apiKey || reqOrKey.ip || 'global');
         const redisKey = `ratelimit:sliding_window:${key}`;
         const now = Date.now();
-        const windowStart = now - this.windowMs;
+        const windowSec = Math.ceil(this.windowMs / 1000);
+        const memberId = Math.floor(Math.random() * 1000000);
 
-        await this.redis.zremrangebyscore(redisKey,0,windowStart);
-        const curCount = await this.redis.zcard(redisKey);
-
-        let allowed = false;
-        if(curCount<this.maxRequests){
-            allowed=true;
-            const uniqueMember = `${now}-${Math.random().toString(36).substring(2, 9)}`;
-            await this.redis.zadd(redisKey, now, uniqueMember);
-        }
-
-        await this.redis.expire(redisKey,Math.ceil(this.windowMs/1000));
-        const rem = Math.max(0,this.maxRequests - curCount - (allowed?1:0));
+        const [allowed, remaining] = await this.redis.eval(
+            SLIDING_WINDOW_SCRIPT, 1, redisKey,
+            now, this.windowMs, this.maxRequests, windowSec, memberId
+        );
 
         return {
-            allowed,
-            remaining:rem,
-            resetAt:now+this.windowMs
+            allowed: allowed === 1,
+            remaining: Number(remaining),
+            resetAt: now + this.windowMs
         };
     }
 
-    getName(){
-        return 'sliding_window';
-    }
+    getName() { return 'sliding_window'; }
 }

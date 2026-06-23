@@ -1,7 +1,9 @@
 import { AbstractHandler } from './AbstractHandler.js'
 
-export class AuthKeyHandler extends AbstractHandler {
+const clientCache = new Map();
+const CACHE_TTL_MS = 300000; 
 
+export class AuthKeyHandler extends AbstractHandler {
     constructor(clientRepository) {
         super();
         this.clientRepository = clientRepository;
@@ -9,7 +11,6 @@ export class AuthKeyHandler extends AbstractHandler {
 
     async handle(request) {
         const apiKey = request.headers?.['x-api-key'];
-        const clientName = request.headers?.['x-client-name'];
 
         if (!apiKey) {
             return {
@@ -19,23 +20,28 @@ export class AuthKeyHandler extends AbstractHandler {
             };
         }
 
-        let clientConfig = await this.clientRepository.findByApiKey(apiKey);
+        let clientConfig = null;
+        const cached = clientCache.get(apiKey);
+
+        if (cached && Date.now() < cached.expiresAt) {
+            clientConfig = cached.data;
+        }
 
         if (!clientConfig) {
-            try {
-                clientConfig = await this.clientRepository.save({
-                    apiKey: apiKey,
-                    clientName: clientName || 'Auto-Registered Project',
-                    planId: 'free',
-                    algorithm: 'token_bucket'
-                });
-            } catch (err) {
+            clientConfig = await this.clientRepository.findByApiKey(apiKey);
+
+            if (!clientConfig) {
                 return {
                     success: false,
-                    statusCode: 500,
-                    error: 'Failed to auto-register client'
+                    statusCode: 401,
+                    error: 'Invalid API key'
                 };
             }
+
+            clientCache.set(apiKey, {
+                data: clientConfig,
+                expiresAt: Date.now() + CACHE_TTL_MS
+            });
         }
 
         request.apiKey = apiKey;

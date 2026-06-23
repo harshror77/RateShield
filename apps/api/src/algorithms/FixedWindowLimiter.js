@@ -1,36 +1,36 @@
-import {IRateLimiter} from './IRateLimiter.js';
-import {getRedisClient} from '../singletons/RedisClient.singleton.js'
+import { IRateLimiter } from './IRateLimiter.js';
+import { getRedisClient } from '../singletons/RedisClient.singleton.js'
 
-export class FixedWindowLimiter extends IRateLimiter{
+export class FixedWindowLimiter extends IRateLimiter {
 
-    constructor({maxRequests,windowMs}){
+    constructor({ maxRequests, windowMs }) {
         super();
         this.maxRequests = maxRequests;
-        this.windowMs = windowMs;
-        this.redis = getRedisClient();
+        this.windowMs    = windowMs;
+        this.redis       = getRedisClient();
     }
 
-    async isAllowed(reqOrKey){
-        const key = typeof reqOrKey === 'string' ? reqOrKey : (reqOrKey.apiKey || reqOrKey.ip || 'global');
-        const now = Date.now();
-        const windowId = Math.floor(now/this.windowMs);
+    async isAllowed(reqOrKey) {
+        const key      = typeof reqOrKey === 'string' ? reqOrKey : (reqOrKey.apiKey || reqOrKey.ip || 'global');
+        const now      = Date.now();
+        const windowId = Math.floor(now / this.windowMs);
         const redisKey = `ratelimit:fixed_window:${key}:${windowId}`;
-        const count = await this.redis.incr(redisKey);
+        const windowSec = Math.ceil(this.windowMs / 1000);
 
-        if(count==1) await this.redis.expire(redisKey,Math.ceil(this.windowMs/1000));
+        const pipeline = this.redis.pipeline();
+        pipeline.incr(redisKey);
+        pipeline.expire(redisKey, windowSec);
+        const [[, count]] = await pipeline.exec();
 
-        const allowed = count<=this.maxRequests;
-        const rem = Math.max(0,this.maxRequests-count);
-        const windowEnd = (windowId+1)*this.windowMs;
+        const allowed  = count <= this.maxRequests;
+        const windowEnd = (windowId + 1) * this.windowMs;
 
-        return{
+        return {
             allowed,
-            remaining:rem,
-            resetAt:windowEnd
+            remaining: Math.max(0, this.maxRequests - count),
+            resetAt:   windowEnd
         };
     }
 
-    getName(){
-        return 'fixed_window';
-    }
+    getName() { return 'fixed_window'; }
 }
