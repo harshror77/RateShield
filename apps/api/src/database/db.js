@@ -1,11 +1,7 @@
 import pg from 'pg'
-import dotenv from 'dotenv'
-dotenv.config()
-
 const { Pool } = pg
 
 let pool = null
-
 export function getDb() {
   if (pool) return pool
   pool = new Pool({

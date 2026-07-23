@@ -1,9 +1,6 @@
-import dotenv from "dotenv"
 import {planLimits,PLANS,ALGORITHMS} from '../config/plans.config.js'
 
-dotenv.config();
 let config=null;
-
 export function getConfig(){
     if(config) return config;
 

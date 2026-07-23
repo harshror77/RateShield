@@ -1,25 +1,31 @@
 # Rate Limiter as a Service
 
-A standalone rate limiting microservice. Other services call it before doing real work and get an allow/deny decision back, instead of every team writing their own rate limiting logic.
+A rate-limiting microservice that centralizes request-throttling logic behind a single API, 
+so consuming services get an allow/deny decision instead of implementing their own limiter.
 
-Built to show a few classic design patterns (Strategy, Decorator, Chain of Responsibility, Factory, Repository) working together in a real, runnable system — not just diagrams. See [DESIGN.md](./DESIGN.md) for the architecture decisions and trade-offs.
+Implements three interchangeable rate-limiting algorithms (Token Bucket, Sliding Window, Fixed 
+Window) as atomic Redis Lua scripts to eliminate race conditions under concurrent requests, 
+layers IP/user/plan-level limits independently via the Decorator pattern, and stays available 
+during Redis outages via a circuit breaker with an in-memory fallback limiter.
+
+See DESIGN.md for the architecture decisions and trade-offs.
 
 ## Stack
 
-- **API:** Node.js, Express, Redis (ioredis)
+- **API:** Node.js, Express, Redis (ioredis), PostgreSQL (pg)
 - **Dashboard:** React, Vite, Tailwind, React Router, Axios
-- **Infra:** Docker Compose (Redis)
+- **Infra:** Docker Compose (Redis + Postgres)
 
 ## Project structure
 
 ```
 RateLimiter/
 ├── apps/
-│   ├── api/          backend service
-│   └── dashboard/     React admin UI
-├── packages/
-│   ├── sdk/           npm package for consuming services
-│   └── shared/        shared types/constants
+│   ├── api/               backend service
+│   ├── dashboard/         React admin UI
+│   └── package/
+│       ├── sdk/           npm package for consuming services
+│       └── shared/        shared types/constants
 ├── docker-compose.yml
 └── DESIGN.md
 ```
@@ -32,8 +38,11 @@ Requires Node 18+, Docker, npm.
 # from project root
 npm install
 
-# start Redis
+# start Redis + Postgres
 docker-compose up -d
+
+# create the clients table (first time only)
+npm run migrate --workspace=apps/api
 
 # start the API
 npm run dev:api
@@ -51,13 +60,17 @@ The dashboard runs on `http://localhost:5173`.
 
 ## Test clients
 
-The API seeds three test clients on startup, no database setup needed:
+Client data is stored in Postgres — there's no seed data yet, so create a client first via the API or dashboard:
 
-| API Key | Plan | Algorithm |
-|---|---|---|
-| `free-test-key` | Free (100 req/min) | Token Bucket |
-| `pro-test-key` | Pro (1000 req/min) | Sliding Window |
-| `enterprise-test-key` | Enterprise (10000 req/min) | Fixed Window |
+```bash
+curl -X POST http://localhost:3000/api/clients \
+  -H "x-api-key: any-key-you-choose" \
+  -H "Content-Type: application/json" \
+  -d '{"apiKey": "free-test-key", "clientName": "Test Client", "planId": "free", "algorithm": "token_bucket"}'
+```
+
+Plans: `free` (100 req/min), `pro` (1000 req/min), `enterprise` (10000 req/min) — configurable in `apps/api/src/config/plans.config.js`.
+Algorithms: `token_bucket`, `sliding_window`, `fixed_window`.
 
 ## API
 
@@ -74,6 +87,7 @@ Header: x-api-key: free-test-key
 ```
 GET /health
 ```
+Reports API + Redis status.
 
 **Manage clients**
 ```
@@ -93,15 +107,16 @@ curl -X POST http://localhost:3000/api/check \
   -H "Content-Type: application/json"
 ```
 
-Run it more than 100 times in a minute on the free key and it switches to `allowed: false`.
+Run it more than 100 times in a minute on a free-plan key and it switches to `allowed: false`.
 
 ## Environment variables
 
-See `.env.example` in `apps/api/`. Defaults work out of the box for local development.
+Set in `apps/api/.env` (see `docker-compose.yml` for the full list of variables Postgres/Redis expect). Key ones: `PORT`, `REDIS_HOST`, `REDIS_PORT`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `CIRCUIT_BREAKER_THRESHOLD`, `CIRCUIT_BREAKER_RECOVERY_MS`, `DEFAULT_FREE_LIMIT`, `DEFAULT_PRO_LIMIT`, `DEFAULT_ENTERPRISE_LIMIT`, `DEFAULT_WINDOW_MS`.
 
 ## Known limitations
 
-- Circuit Breaker is implemented but not yet wired into the live Redis calls.
-- Client storage is in-memory — restarting the API resets to the three seeded test clients.
+- Client config caching (in `RateLimiterFactory` and `AuthKeyHandler`) has no eviction for long-running processes — fine at demo scale, would need a TTL/LRU policy for real long-term production use.
+- Circuit breaker's in-memory fallback limiter is per-process — running multiple API replicas means the effective fallback limit during a Redis outage multiplies per instance.
+- `InMemoryClientRepository` still exists but is unused; `PostgresClientRepository` is what's actually wired in.
 
 Full reasoning behind these and other decisions in [DESIGN.md](./DESIGN.md).

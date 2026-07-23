@@ -1,6 +1,3 @@
-import dotenv from 'dotenv'
-dotenv.config()
-
 export const PLANS = {
     FREE: 'free',
     PRO: 'pro',
@@ -13,17 +10,10 @@ export const ALGORITHMS = {
     FIXED_WINDOW: 'fixed_window'
 };
 
+const windowMs = parseInt(process.env.DEFAULT_WINDOW_MS || '60000');
+
 export const planLimits = {
-    [PLANS.FREE]:{
-        maxRequests: parseInt(process.env.DEFAULT_FREE_LIMIT || '100'),
-        windowMs: parseInt(process.env.DEFAULT_WINDOW_MS || '60000')
-    },
-    [PLANS.PRO]:{
-        maxRequests:parseInt(process.env.DEFAULT_PRO_LIMIT || '1000'),
-        windowMs:parseInt(process.env.DEFAULT_WINDOW_MS || '60000')
-    },
-    [PLANS.ENTERPRISE]:{
-        maxRequests: parseInt(process.env.DEFAULT_ENTERPRISE_LIMIT || '10000'),
-        windowMs: parseInt(process.env.DEFAULT_WINDOW_MS || '60000')
-    }
+  [PLANS.FREE]:       { maxRequests: parseInt(process.env.DEFAULT_FREE_LIMIT || '100'), windowMs },
+  [PLANS.PRO]:        { maxRequests: parseInt(process.env.DEFAULT_PRO_LIMIT || '1000'), windowMs },
+  [PLANS.ENTERPRISE]: { maxRequests: parseInt(process.env.DEFAULT_ENTERPRISE_LIMIT || '10000'), windowMs },
 };

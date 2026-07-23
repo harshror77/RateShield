@@ -41,7 +41,7 @@ export class PostgresClientRepository extends IClientRepository {
     const result = await this.db.query(
       'SELECT * FROM clients ORDER BY created_at DESC'
     )
-    return result.rows.map(this.#toClient)
+    return result.rows.map(row=>this.#toClient(row));
   }
 
   #toClient(row) {

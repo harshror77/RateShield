@@ -8,11 +8,8 @@ export class RateLimitService {
 
         this.chainFactory = new HandlerChainFactory(
             clientRepository,
-            rateLimiterFactory
+            rateLimiterFactory 
         );
-
-        // ✅ Build ONCE and reuse — not per request
-        // This keeps PlanLimiterDecorator's cache alive across all requests
         this.chain = this.chainFactory.buildChain();
     }
 
@@ -23,7 +20,6 @@ export class RateLimitService {
             userId:       rawRequest.body?.userId || null,
         };
 
-        // ✅ Reuse the same chain instance
         const result = await this.chain.handle(request);
         return result;
     }
