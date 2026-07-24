@@ -5,8 +5,8 @@
   "workspaces": [
     "apps/api",
     "apps/dashboard",
-    "packages/sdk",
-    "packages/shared"
+    "apps/package/sdk",
+    "apps/package/shared"
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",

@@ -3,7 +3,7 @@ import { check } from 'k6';
 import { Counter } from 'k6/metrics';
 
 const API_KEY  = 'sonic-key';
-const BASE_URL = 'http://rateshield.servehttp.com:3000';
+const BASE_URL = 'http://localhost:3000';
 
 const hits200  = new Counter('responses_200');
 const hits429  = new Counter('responses_429');
@@ -14,11 +14,19 @@ const deniedByUser     = new Counter('denied_by_user');
 const deniedByFallback = new Counter('denied_by_fallback');
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   stages: [
-    { duration: '5s',  target: 5  },
     { duration: '10s', target: 10 },
-    { duration: '20s', target: 20 },
-    { duration: '5s',  target: 0  },
+    { duration: '10s', target: 20 },
+    { duration: '10s', target: 30 },
+    { duration: '10s', target: 40 },
+    { duration: '10s', target: 50 },
+    { duration: '10s', target: 60 },
+    { duration: '10s', target: 70 },
+    { duration: '10s', target: 80 },
+    { duration: '10s', target: 90 },
+    { duration: '10s', target: 100 },
+    { duration: '10s', target: 0 },
   ],
   thresholds: {
     http_req_failed:   ['rate<0.01'],
